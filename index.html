@@ -5,16 +5,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>柒葱书签检测工具</title>
-    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <style>
-            body {
-            background-image: url('./backgroundnet.jpg');
-            background-size: cover; /* 覆盖整个页面 */
-            background-repeat: no-repeat; /* 防止重复平铺 */
-            background-position: center; /* 图片居中显示 */
+        body {
+            background-image: url('https://source.unsplash.com/random/1920x1080/?network');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-attachment: fixed;
         }
 
         .progress-bar {
@@ -30,18 +31,17 @@
             100% {
                 opacity: 1;
             }
-
             50% {
                 opacity: 0.5;
             }
         }
 
         .toast {
-            @apply fixed top-4 right-4 z-50 transition-all duration-300;
-        }
-
-        .fade-in {
-            animation: fadeIn 0.3s ease-in-out;
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 50;
+            transition: all 0.3s;
         }
 
         @keyframes fadeIn {
@@ -49,15 +49,10 @@
                 opacity: 0;
                 transform: translateY(-20px);
             }
-
             to {
                 opacity: 1;
                 transform: translateY(0);
             }
-        }
-
-        .fade-out {
-            animation: fadeOut 0.3s ease-in-out;
         }
 
         @keyframes fadeOut {
@@ -65,11 +60,18 @@
                 opacity: 1;
                 transform: translateY(0);
             }
-
             to {
                 opacity: 0;
                 transform: translateY(-20px);
             }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .fade-out {
+            animation: fadeOut 0.3s ease-in-out;
         }
 
         .url-cell {
@@ -81,7 +83,7 @@
         .results-container {
             overflow-x: auto;
             max-width: 100%;
-            max-height: 300px; /* 设置最大高度，超出显示滚动条 */
+            max-height: 300px;
             overflow-y: auto;
         }
 
@@ -108,14 +110,37 @@
             transform: translateY(-1px);
         }
 
-        /* Added transparency for upper elements */
         .container {
-            opacity: 0.6;
+            opacity: 0.9;
             transition: opacity 0.3s ease;
         }
 
         .container:hover {
             opacity: 1;
+        }
+
+        .file-input-label {
+            transition: all 0.2s ease;
+        }
+
+        .file-input-label:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .status-available {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-unavailable {
+            background-color: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .status-checking {
+            background-color: #e0e7ff;
+            color: #4338ca;
         }
     </style>
 </head>
@@ -125,7 +150,7 @@
     <div id="toastContainer" class="toast"></div>
 
     <div class="container mx-auto px-4 py-8 max-w-6xl flex-1">
-        <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+        <div class="bg-white rounded-xl shadow-md p-6 mb-6 backdrop-blur-sm bg-opacity-90">
             <div class="flex items-center justify-center mb-6">
                 <i class="fas fa-bookmark text-indigo-600 text-4xl mr-3"></i>
                 <h1 class="text-3xl font-bold text-center text-indigo-600">柒葱书签检测工具</h1>
@@ -135,14 +160,13 @@
                 <div class="flex-1">
                     <label class="block text-sm font-medium text-gray-700 mb-1">选择书签文件</label>
                     <div class="flex items-center gap-2">
-                        <label
-                            class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg cursor-pointer transition-colors flex items-center">
+                        <label for="bookmarkFile" class="file-input-label bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg cursor-pointer transition-all flex items-center">
                             <i class="fas fa-folder-open mr-2"></i>选择文件
-                            <input type="file" id="bookmarkFile" accept=".html" multiple class="hidden">
                         </label>
-                        <div id="fileNameDisplay"
-                            class="flex-1 px-3 py-2 border border-gray-300 rounded-lg truncate text-gray-700 bg-gray-50">
-                            未选择文件</div>
+                        <input type="file" id="bookmarkFile" accept=".html" class="hidden">
+                        <div id="fileNameDisplay" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg truncate text-gray-700 bg-gray-50">
+                            未选择文件
+                        </div>
                     </div>
                 </div>
 
@@ -210,7 +234,7 @@
             </div>
         </div>
 
-        <div id="results" class="bg-white rounded-xl shadow-md">
+        <div id="results" class="bg-white rounded-xl shadow-md backdrop-blur-sm bg-opacity-90">
             <div class="results-container">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
@@ -266,21 +290,31 @@
         let checkAbortController = null;
         let activeRequests = 0;
 
-        // 初始化文件输入显示
+        // Initialize file input display
         document.getElementById('bookmarkFile').addEventListener('change', function (e) {
-            const files = e.target.files;
+            const file = e.target.files[0];
             const fileNameDisplay = document.getElementById('fileNameDisplay');
 
-            if (files.length === 0) {
+            if (!file) {
                 fileNameDisplay.textContent = '未选择文件';
-            } else if (files.length === 1) {
-                fileNameDisplay.textContent = files[0].name;
-            } else {
-                fileNameDisplay.textContent = `${files.length} 个文件已选择`;
+                return;
             }
+
+            fileNameDisplay.textContent = file.name;
+            
+            // Parse the bookmark file immediately when selected
+            parseBookmarks(file).then(bookmarks => {
+                originalBookmarks = bookmarks;
+                filteredBookmarks = [...originalBookmarks];
+                showAlert(`成功加载 ${bookmarks.length} 个书签`, 'success');
+                updateStats();
+            }).catch(error => {
+                showAlert('解析书签文件失败: ' + error.message, 'error');
+                console.error('Error parsing bookmarks:', error);
+            });
         });
 
-        // 显示提示通知
+        // Show alert notification
         function showAlert(message, type = 'info', duration = 3000) {
             const toastContainer = document.getElementById('toastContainer');
             const toastId = 'toast-' + Date.now();
@@ -325,19 +359,19 @@
             }
         }
 
-        // 更新统计信息显示
+        // Update stats display
         function updateStats() {
             const total = filteredBookmarks.length;
-            const available = availabilityStatus.filter(s => s).length;
-            const unavailable = total - available;
+            const available = availabilityStatus.filter(s => s === true).length;
+            const unavailable = availabilityStatus.filter(s => s === false).length;
             document.getElementById('stats').textContent = `共 ${total} 个书签 | 可用：${available} | 不可用：${unavailable}`;
         }
 
-        // 解析书签文件
+        // Parse bookmark file
         async function parseBookmarks(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
-                reader.onload = async function (e) {
+                reader.onload = function (e) {
                     try {
                         const parser = new DOMParser();
                         const doc = parser.parseFromString(e.target.result, "text/html");
@@ -356,11 +390,11 @@
             });
         }
 
-        // 检查 URL 可用性并设置超时
+        // Check URL availability with timeout
         async function checkAvailability(url) {
             try {
                 const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 3000);
+                const timeout = setTimeout(() => controller.abort(), 5000); // 5 seconds timeout
 
                 activeRequests++;
                 const response = await fetch(url, {
@@ -379,18 +413,22 @@
             }
         }
 
-        // 开始检查书签
+        // Start checking bookmarks
         async function startCheck() {
-            const fileInput = document.getElementById('bookmarkFile');
-            if (!fileInput.files.length) {
-                showAlert('请选择书签文件', 'warning');
+            if (originalBookmarks.length === 0) {
+                showAlert('请先选择书签文件', 'warning');
                 return;
             }
 
-            // 获取线程数
+            if (isChecking) {
+                showAlert('检测已在运行中', 'warning');
+                return;
+            }
+
+            // Get thread count
             const threadCount = parseInt(document.getElementById('threadCount').value) || 16;
 
-            // 重置状态
+            // Reset states
             isChecking = true;
             checkAbortController = new AbortController();
             document.getElementById('stopBtn').classList.remove('hidden');
@@ -408,141 +446,121 @@
             progressBar.style.width = '0%';
             progressText.textContent = '0%';
             currentProgress.textContent = '准备开始检测...';
-            originalBookmarks = [];
+            filteredBookmarks = [...originalBookmarks];
 
-            try {
-                // 解析所有选择的文件
-                for (let i = 0; i < fileInput.files.length; i++) {
-                    const file = fileInput.files[i];
-                    const bookmarks = await parseBookmarks(file);
-                    originalBookmarks = originalBookmarks.concat(bookmarks);
+            const total = originalBookmarks.length;
+
+            // Create table rows for all bookmarks (initial loading state)
+            for (let i = 0; i < total; i++) {
+                const bookmark = originalBookmarks[i];
+
+                const row = document.createElement('tr');
+                row.className = 'bookmark-row hover:bg-gray-100 transition-all duration-200';
+                row.id = `bookmark-row-${i}`;
+
+                row.innerHTML = `
+                    <td class="px-6 py-4 url-cell">
+                        <div class="bookmark-title">${bookmark.title}</div>
+                        <div class="bookmark-url break-all">${bookmark.url}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="status px-2 inline-flex text-xs leading-5 font-semibold rounded-full status-checking animate-pulse">
+                            <i class="fas fa-spinner fa-spin mr-1"></i>检测中...
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <button onclick="deleteBookmark(${i})" class="delete-btn mr-2 bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs">
+                            <i class="fas fa-trash-alt mr-1"></i>删除
+                        </button>
+                        <button onclick="window.open('${bookmark.url}', '_blank')" class="open-btn bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-xs">
+                            <i class="fas fa-external-link-alt mr-1"></i>打开
+                        </button>
+                    </td>
+                `;
+
+                resultsBody.appendChild(row);
+            }
+
+            // Start checking bookmarks in parallel with configured thread count
+            let currentIndex = 0;
+            let completed = 0;
+
+            async function processBatch() {
+                const batch = [];
+                const maxThreads = Math.min(threadCount, 32); // Ensure not exceeding 32
+
+                // Consider current active requests
+                const availableThreads = maxThreads - activeRequests;
+
+                for (let i = 0; i < availableThreads && currentIndex < total; i++) {
+                    if (!isChecking) break;
+                    batch.push(currentIndex++);
                 }
 
-                filteredBookmarks = [...originalBookmarks];
-                const total = originalBookmarks.length;
+                if (batch.length === 0 || !isChecking) return;
 
-                if (total === 0) {
-                    showAlert('书签文件中没有找到有效的书签', 'warning');
-                    return;
-                }
+                await Promise.all(batch.map(async (index) => {
+                    if (!isChecking) return;
 
-                // 为所有书签创建表格行（初始为加载状态）
-                for (let i = 0; i < total; i++) {
-                    const bookmark = originalBookmarks[i];
+                    const bookmark = originalBookmarks[index];
+                    currentProgress.textContent = `正在检测: ${bookmark.title} (${index + 1}/${total})`;
 
-                    const row = document.createElement('tr');
-                    row.className = 'bookmark-row hover:bg-gray-100 transition-all duration-200';
-                    row.id = `bookmark-row-${i}`;
+                    try {
+                        const isAvailable = await checkAvailability(bookmark.url);
 
-                    row.innerHTML = `
-                        <td class="px-6 py-4 url-cell">
-                            <div class="bookmark-title">${bookmark.title}</div>
-                            <div class="bookmark-url break-all">${bookmark.url}</div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="status px-2 inline-flex text-xs leading-5 font-semibold rounded-full animate-pulse">
-                                检测中...
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <button onclick="deleteBookmark(${i})" class="delete-btn mr-2 bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs">
-                                <i class="fas fa-trash-alt mr-1"></i>删除
-                            </button>
-                            <button onclick="window.open('${bookmark.url}', '_blank')" class="open-btn bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-xs">
-                                <i class="fas fa-external-link-alt mr-1"></i>打开
-                            </button>
-                        </td>
-                    `;
-
-                    resultsBody.appendChild(row);
-                }
-
-                // 开始并行检查每个书签，使用配置的线程数
-                let currentIndex = 0;
-                let completed = 0;
-
-                async function processBatch() {
-                    const batch = [];
-                    const maxThreads = Math.min(threadCount, 32); // 确保不超过32
-
-                    // 考虑当前活跃请求数
-                    const availableThreads = maxThreads - activeRequests;
-
-                    for (let i = 0; i < availableThreads && currentIndex < total; i++) {
-                        if (!isChecking) break;
-                        batch.push(currentIndex++);
-                    }
-
-                    if (batch.length === 0 || !isChecking) return;
-
-                    await Promise.all(batch.map(async (index) => {
                         if (!isChecking) return;
 
-                        const bookmark = originalBookmarks[index];
-                        currentProgress.textContent = `正在检测: ${bookmark.title} (${index + 1}/${total})`;
+                        availabilityStatus[index] = isAvailable;
 
-                        try {
-                            const isAvailable = await checkAvailability(bookmark.url);
+                        // Update the row immediately
+                        const row = document.getElementById(`bookmark-row-${index}`);
+                        if (row) {
+                            const statusCell = row.querySelector('.status');
 
-                            if (!isChecking) return;
+                            statusCell.className = `px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${isAvailable ? 'status-available' : 'status-unavailable'}`;
+                            statusCell.innerHTML = isAvailable 
+                                ? '<i class="fas fa-check-circle mr-1"></i>可用' 
+                                : '<i class="fas fa-times-circle mr-1"></i>不可用';
 
-                            availabilityStatus[index] = isAvailable;
-
-                            // 立即更新行
-                            const row = document.getElementById(`bookmark-row-${index}`);
-                            if (row) {
-                                const statusCell = row.querySelector('.status');
-
-                                statusCell.className = `px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${isAvailable ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'}`;
-                                statusCell.innerHTML = isAvailable ? '<i class="fas fa-check-circle mr-1"></i>可用' : '<i class="fas fa-times-circle mr-1"></i>不可用';
-
-                                // 移除加载动画类
-                                statusCell.classList.remove('animate-pulse');
-                            }
-
-                            // 更新进度
-                            completed++;
-                            const progress = Math.round((completed / total) * 100);
-                            progressBar.style.width = `${progress}%`;
-                            progressText.textContent = `${progress}%`;
-
-                            if (completed === total) {
-                                currentProgress.textContent = '检测完成!';
-                                document.getElementById('removeBtn').disabled = false;
-                                document.getElementById('exportBtn').disabled = false;
-                                document.getElementById('resetBtn').disabled = false;
-                                document.getElementById('stopBtn').classList.add('hidden');
-                                isChecking = false;
-                                showAlert('书签检测完成', 'success');
-                            }
-
-                            updateStats();
-                        } catch (error) {
-                            console.error('Error checking bookmark:', error);
+                            // Remove loading animation class
+                            statusCell.classList.remove('animate-pulse');
                         }
-                    }));
 
-                    if (currentIndex < total && isChecking) {
-                        // 处理下一批次，添加小延迟防止 UI 冻结
-                        setTimeout(processBatch, 50);
+                        // Update progress
+                        completed++;
+                        const progress = Math.round((completed / total) * 100);
+                        progressBar.style.width = `${progress}%`;
+                        progressText.textContent = `${progress}%`;
+
+                        if (completed === total) {
+                            currentProgress.textContent = '检测完成!';
+                            document.getElementById('removeBtn').disabled = false;
+                            document.getElementById('exportBtn').disabled = false;
+                            document.getElementById('resetBtn').disabled = false;
+                            document.getElementById('stopBtn').classList.add('hidden');
+                            isChecking = false;
+                            showAlert('书签检测完成', 'success');
+                        }
+
+                        updateStats();
+                    } catch (error) {
+                        console.error('Error checking bookmark:', error);
                     }
-                }
+                }));
 
-                // 开始处理批次
-                for (let i = 0; i < threadCount; i++) {
-                    processBatch();
+                if (currentIndex < total && isChecking) {
+                    // Process next batch with small delay to prevent UI freeze
+                    setTimeout(processBatch, 50);
                 }
+            }
 
-            } catch (error) {
-                console.error('Error:', error);
-                showAlert('处理失败: ' + error.message, 'error');
-                isChecking = false;
-                document.getElementById('stopBtn').classList.add('hidden');
-                document.getElementById('resetBtn').disabled = false;
+            // Start processing batches
+            for (let i = 0; i < threadCount; i++) {
+                processBatch();
             }
         }
 
-        // 停止检查过程
+        // Stop checking process
         function stopCheck() {
             isChecking = false;
             if (checkAbortController) {
@@ -554,20 +572,20 @@
             showAlert('检测已停止', 'warning');
         }
 
-        // 删除单个书签
+        // Delete single bookmark
         function deleteBookmark(index) {
             if (!confirm('确定要删除这个书签吗？')) return;
 
             filteredBookmarks.splice(index, 1);
             availabilityStatus.splice(index, 1);
 
-            // 从表格中移除行
+            // Remove row from table
             const row = document.getElementById(`bookmark-row-${index}`);
             if (row) {
                 row.remove();
             }
 
-            // 重新索引所有剩余行
+            // Re-index all remaining rows
             const rows = document.querySelectorAll('[id^="bookmark-row-"]');
             rows.forEach((row, i) => {
                 row.id = `bookmark-row-${i}`;
@@ -581,9 +599,9 @@
             showAlert('已删除该书签', 'success');
         }
 
-        // 删除所有不可用的书签
+        // Remove all unavailable bookmarks
         function removeUnavailable() {
-            const unavailableCount = availabilityStatus.filter(s => !s).length;
+            const unavailableCount = availabilityStatus.filter(s => s === false).length;
             if (unavailableCount === 0) {
                 showAlert('没有不可用的书签', 'info');
                 return;
@@ -591,12 +609,12 @@
 
             if (!confirm(`确定要删除所有 ${unavailableCount} 个不可用书签吗？`)) return;
 
-            // 过滤所有数组
+            // Filter all arrays
             const newBookmarks = [];
             const newStatus = [];
 
             for (let i = 0; i < filteredBookmarks.length; i++) {
-                if (availabilityStatus[i]) {
+                if (availabilityStatus[i] !== false) {
                     newBookmarks.push(filteredBookmarks[i]);
                     newStatus.push(availabilityStatus[i]);
                 }
@@ -605,7 +623,7 @@
             filteredBookmarks = newBookmarks;
             availabilityStatus = newStatus;
 
-            // 仅使用可用书签重建表格
+            // Rebuild table with only available bookmarks
             const resultsBody = document.getElementById('resultsBody');
             resultsBody.innerHTML = '';
 
@@ -623,7 +641,7 @@
                             <div class="bookmark-url break-all">${bookmark.url}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="status px-2 inline-flex text-xs leading-5 font-semibold rounded-full text-green-700 bg-green-100">
+                            <span class="status px-2 inline-flex text-xs leading-5 font-semibold rounded-full status-available">
                                 <i class="fas fa-check-circle mr-1"></i>可用
                             </span>
                         </td>
@@ -645,14 +663,14 @@
             showAlert(`已删除 ${unavailableCount} 个不可用书签`, 'success');
         }
 
-        // 导出书签为 HTML 文件
+        // Export bookmarks as HTML file
         function exportBookmarks() {
             if (filteredBookmarks.length === 0) {
                 showAlert('没有可导出的书签', 'warning');
                 return;
             }
 
-            // 创建 HTML 内容
+            // Create HTML content
             let htmlContent = `<!DOCTYPE NETSCAPE-Bookmark-file-1>
 <!-- This is an automatically generated file.
      It will be read and overwritten.
@@ -669,7 +687,7 @@
 
             htmlContent += `</DL><p>`;
 
-            // 创建下载链接
+            // Create download link
             const blob = new Blob([htmlContent], { type: 'text/html' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -683,7 +701,7 @@
             showAlert('书签导出成功', 'success');
         }
 
-        // 搜索书签
+        // Search bookmarks
         function searchBookmarks() {
             const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
 
@@ -702,7 +720,7 @@
                 bookmark.url.toLowerCase().includes(searchTerm)
             );
 
-            // 重建表格，显示搜索结果
+            // Rebuild table with search results
             const resultsBody = document.getElementById('resultsBody');
             resultsBody.innerHTML = '';
 
@@ -714,68 +732,66 @@
                     row.className = 'bookmark-row hover:bg-gray-100 transition-all duration-200';
                     row.id = `bookmark-row-${index}`;
 
-                    // 检查是否有此书签的可用性信息
+                    // Check if we have availability info for this bookmark
                     const originalIndex = originalBookmarks.findIndex(b =>
                         b.title === bookmark.title && b.url === bookmark.url
-                    )))))))));;
+                    );
 
-                    constconst isAvailableisAvailable =  = availabilityStatusavailabilityStatus[[[[[[[[originalIndexoriginalIndex]]]]]]]];;
+                    const isAvailable = availabilityStatus[originalIndex];
 
-                    rowrow..innerHTMLinnerHTML =  = ``
-                        <td td td td td td td td td classclass="px-6 py-4 url-cell""px-6 py-4 url-cell""px-6 py-4 url-cell""px-6 py-4 url-cell""px-6 py-4 url-cell""px-6 py-4 url-cell""px-6 py-4 url-cell""px-6 py-4 url-cell">
-                            <div div div div div div div div div classclass="bookmark-title""bookmark-title""bookmark-title""bookmark-title""bookmark-title""bookmark-title""bookmark-title""bookmark-title">$${{{{{{{{{bookmarkbookmark..titletitle}}}}}}}}}</div>/div>
-                            <div div div div div div div div div classclass="bookmark-url break-all""bookmark-url break-all""bookmark-url break-all""bookmark-url break-all""bookmark-url break-all""bookmark-url break-all""bookmark-url break-all""bookmark-url break-all">$${{{{{{{{{bookmarkbookmark..urlurl}}}}}}}}}</div>/divdiv>
-                        </td>/tdtd>
-                        <td td td td td td td td td classclass="px-6 py-4 whitespace-nowrap""px-6 py-4 whitespace-nowrap""px-6 py-4 whitespace-nowrap""px-6 py-4 whitespace-nowrap""px-6 py-4 whitespace-nowrap""px-6 py-4 whitespace-nowrap""px-6 py-4 whitespace-nowrap""px-6 py-4 whitespace-nowrap">
-                            <span span span span span span span span span classclass="status px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${isAvailable ?  ? 'text-green-700 bg-green-100' :  : 'text-red-700 bg-red-100'}""status px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${isAvailable ?  ? 'text-green-700 bg-green-100' :  : 'text-red-700 bg-red-100'}""status px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${isAvailable ?  ? 'text-green-700 bg-green-100' :  : 'text-red-700 bg-red-100'}""status px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${isAvailable ?  ? 'text-green-700 bg-green-100' :  : 'text-red-700 bg-red-100'}""status px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${isAvailable ?  ? 'text-green-700 bg-green-100' :  : 'text-red-700 bg-red-100'}""status px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${isAvailable ?  ? 'text-green-700 bg-green-100' :  : 'text-red-700 bg-red-100'}""status px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${isAvailable ?  ? 'text-green-700 bg-green-100' :  : 'text-red-700 bg-red-100'}""status px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${isAvailable ?  ? 'text-green-700 bg-green-100' :  : 'text-red-700 bg-red-100'}""status px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${isAvailable ?  ? 'text-green-700 bg-green-100' :  : 'text-red-700 bg-red-100'}">
-                                $${{{{{{{{{isAvailableisAvailable ?  ? '<i class="fas fa-check-circle mr-1"></i>可用''<i i i i i i i classclass="fas fa-check-circle mr-1""fas fa-check-circle mr-1""fas fa-check-circle mr-1""fas fa-check-circle mr-1""fas fa-check-circle mr-1""fas fa-check-circle mr-1""fas fa-check-circle mr-1"></i>可用' : :/i>可用可用' : :' : :
-                                  (((((((((isAvailableisAvailable ===  === falsefalse ?  ? '<i class="fas fa-times-circle mr-1"></i>不可用''<i i classclass="fas fa-times-circle mr-1""fas fa-times-circle mr-1""fas fa-times-circle mr-1""fas fa-timestimes-circle circle mr-11""fas fa-timestimes-circle circle mr-11""fas fa-timestimes-circle circle mr-11"></i>不可用' :  : '未检测''未检测')}')}
-                            </span>/span>
-                        </td>/td>
-                        <td td classclass="px-6 py-4 whitespace-nowrap text-sm text-gray-500""px-6 py-44 whitespace-nowrap nowrap text-sm sm text-graygray-500500""px-6 py-44 whitespace-nowrap nowrap text-sm sm text-graygray-500500""px-6 py-44 whitespace-nowrap nowrap text-sm sm text-graygray-500500""px-6 py-44 whitespace-nowrap nowrap text-sm sm text-graygray-500500""px-66 py-44 whitespace-nowrap nowrap text-sm sm text-graygray-500500">
-                            <button button onclick="deleteBookmark(${index})""deleteBookmark(((($${{{index})""deleteBookmark(((${index})""deleteBookmark(((((((((($${{{index}}}}))))""deleteBookmark((((($${{index}}))" classclass="delete-btn mr-2 bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs""deletedelete-btn btn mr-22 bg-redred-600600 hoverhover:bg-redred-700700 text-white white px-33 py-11 rounded text-xsxs""deletedelete-btn btn mr-22 bg-redred-600600 hoverhover:bg-redred-700700 text-white white px-33 py-11 rounded text-xsxs">
-                                <i i classclass="fas fa-trash-alt mr-1""fas fa-trash-alt alt mr-11""fas fa-trash-alt alt mr-11""fas fa-trashtrash-alt alt mr-11"></i>删除/i>删除删除
-                            </button>/button>
-                            <button button onclick="window.open('${bookmark..url}', '_blank')""window.openopenopenopen((((('${bookmark..url}''${{{{{bookmark..urlurl}}}}}', '_blank''_blank')))))" classclassclassclass="open-btn bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-xs""open-btn btn bg-indigoindigo-600600 hover:bg-indigoindigo-700700 text-white white px-33 py-11 rounded text-xsxs">">
-                                <i i i classclass="fas fa-external-link-alt mr-1""fas fa-external-linklink-alt alt mr-11""fas fa-external-linklink-alt alt mr-11""fas fa-externalexternal-linklink-alt alt mr-11"></i>打开/i>打开打开
-                            </button>/buttonbutton>
-                        </td>/tdtd>
-                    `;;`;;
+                    row.innerHTML = `
+                        <td class="px-6 py-4 url-cell">
+                            <div class="bookmark-title">${bookmark.title}</div>
+                            <div class="bookmark-url break-all">${bookmark.url}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="status px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${typeof isAvailable === 'undefined' ? 'status-checking' : isAvailable ? 'status-available' : 'status-unavailable'}">
+                                ${typeof isAvailable === 'undefined' ? '<i class="fas fa-question-circle mr-1"></i>未检测' : isAvailable ? '<i class="fas fa-check-circle mr-1"></i>可用' : '<i class="fas fa-times-circle mr-1"></i>不可用'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <button onclick="deleteBookmark(${index})" class="delete-btn mr-2 bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs">
+                                <i class="fas fa-trash-alt mr-1"></i>删除
+                            </button>
+                            <button onclick="window.open('${bookmark.url}', '_blank')" class="open-btn bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-xs">
+                                <i class="fas fa-external-link-alt mr-1"></i>打开
+                            </button>
+                        </td>
+                    `;
 
-                    resultsBodyresultsBody..appendChildappendChild((((((((rowrow)))))));;
-                }}}}}}})))))));;
-            }}}}}}}
+                    resultsBody.appendChild(row);
+                });
+            }
 
-            updateStatsupdateStats((((((()))))));;
-            showAlertshowAlert((((((((`找到 `找到 找到找到 $${$${{{{filteredBookmarksfilteredBookmarks..lengthlengthlengthlength}}}}}} 个匹配的书签个匹配的书签`{filteredBookmarks..length} 个匹配的书签`, , 'success''success''success''success'))))));;'))))));;
-        }}}}}}}}
+            updateStats();
+            showAlert(`找到 ${filteredBookmarks.length} 个匹配的书签`, 'success');
+        }
 
-        // 重置工具到初始状态// 重置工具到初始状态
-        functionfunction resetTool((((((())))))) {{{{{
-            ifif (((((((isCheckingisChecking))))))) {{{{{{
-                showAlertshowAlertshowAlertshowAlertshowAlertshowAlertshowAlertshowAlert((((((('请先停止检测''请先停止检测''请先停止检测', , 'warning''warning''warning''warning'))))))))))));;
-                returnreturnreturnreturn;;
-            }}}}}}
+        // Reset tool to initial state
+        function resetTool() {
+            if (isChecking) {
+                showAlert('请先停止检测', 'warning');
+                return;
+            }
 
-            originalBookmarksoriginalBookmarksoriginalBookmarksoriginalBookmarksoriginalBookmarksoriginalBookmarksoriginalBookmarksoriginalBookmarks =  = [[[[[[[]]]]]]]];;
-            filteredBookmarksfilteredBookmarks =  = [[[[[[[]]]]]]]];;
-            availabilityStatusavailabilityStatus =  = [[[[[[[]]]]]]]];;
+            originalBookmarks = [];
+            filteredBookmarks = [];
+            availabilityStatus = [];
 
-            documentdocumentdocumentdocument..getElementByIdgetElementByIdgetElementByIdgetElementById(((((((((('bookmarkFile''bookmarkFile''bookmarkFile')))))))..valuevalue =  = '''';;';;
-            documentdocumentdocumentdocument..getElementByIdgetElementByIdgetElementByIdgetElementById((((((('fileNameDisplay''fileNameDisplay''fileNameDisplay''fileNameDisplay')))))))..textContenttextContent =  = '未选择文件''未选择文件''未选择文件''未选择文件';;
-            documentdocumentdocumentdocument..getElementByIdgetElementByIdgetElementByIdgetElementById((((((('searchInput''searchInput''searchInput''searchInput')))))))..valuevalue =  = '''''''';;
-            documentdocumentdocumentdocument..getElementByIdgetElementByIdgetElementByIdgetElementById((((((('progressBar''progressBar''progressBar''progressBar')))))))..stylestyle..widthwidth =  = '0%''0%''0%''''0%''0%''0%''''0%''0%';;
-            documentdocumentdocumentdocument..getElementByIdgetElementById((((((('progressText''progressText''progressText''progressText')))))))..textContenttextContent =  = '0%''0%''0%'''0%';;';;
-            documentdocumentdocumentdocument..getElementByIdgetElementById((((((('currentProgress''currentProgress''currentProgress''currentProgress')))))))..textContenttextContent =  = '准备开始检测...''准备开始检测...';;
-            documentdocumentdocumentdocument..getElementByIdgetElementById((((((('removeBtn''removeBtn''removeBtn')))))))..disableddisabled =  = truetrue;;
-            documentdocumentdocumentdocument..getElementByIdgetElementById((((((('exportBtn''exportBtn''exportBtn''exportBtn')))))))..disableddisabled =  = truetrue;;
-            documentdocumentdocumentdocument..getElementByIdgetElementById((((((('resultsBody''resultsBody''resultsBody''resultsBody')))))))..innerHTMLinnerHTML =  = '<tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">请选择书签文件并开始检测</td></tr>''<tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">请选择书签文件并开始检测</td></tr>''<tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">请选择书签文件并开始检测</td></tr>';;
+            document.getElementById('bookmarkFile').value = '';
+            document.getElementById('fileNameDisplay').textContent = '未选择文件';
+            document.getElementById('searchInput').value = '';
+            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('progressText').textContent = '0%';
+            document.getElementById('currentProgress').textContent = '准备开始检测...';
+            document.getElementById('removeBtn').disabled = true;
+            document.getElementById('exportBtn').disabled = true;
+            document.getElementById('resultsBody').innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">请选择书签文件并开始检测</td></tr>';
 
-            updateStatsupdateStats((((((()))))));;
-            showAlertshowAlertshowAlertshowAlert((((((('工具已重置''工具已重置''工具已重置''工具已重置', , 'success''success''success''success'))))))))))));;
-        }}}}}}}}}}}}
+            updateStats();
+            showAlert('工具已重置', 'success');
+        }
     </script>
 </body>
 
 </html>
-    
